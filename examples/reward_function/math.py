@@ -14,19 +14,36 @@
 
 import re
 from typing import Any, Dict, List
+import numpy as np
 
-from mathruler.grader import extract_boxed_content, grade_answer
+def get_answer(response: str):
+    response = response.capitalize()
+    result = []
+    response = response.removeprefix('Answer:')
+    response = response.split()
+    for i in range(len(response)):
+        result.append([int(j) for j in response[i]])
+    return result
+
+def fast_similarity_2d(list1, list2):
+    a1 = np.asarray(list1)
+    a2 = np.asarray(list2)
+    return np.mean(a1 == a2)
+
+def compute_shape(list1, list2):
+    return 1.0 if np.asarray(list1).shape == np.asarray(list2).shape else 0.0
+
+def compute_presence(list1, list2):
+    set1 = {val for row in list1 for val in row}
+    set2 = {val for row in list2 for val in row}
+    return 1.0 if set1 == set2 else 0.0
 
 
 def format_reward(response: str) -> float:
-    pattern = re.compile(r"<think>.*</think>.*\\boxed\{.*\}.*", re.DOTALL)
+    pattern = re.compile(r'^Answer:\s*(\d+\s*)+$', re.DOTALL)
     format_match = re.fullmatch(pattern, response)
     return 1.0 if format_match else 0.0
 
-
-def accuracy_reward(response: str, ground_truth: str) -> float:
-    answer = extract_boxed_content(response)
-    return 1.0 if grade_answer(answer, ground_truth) else 0.0
 
 
 def compute_score(reward_inputs: List[Dict[str, Any]], format_weight: float = 0.1) -> List[Dict[str, float]]:
@@ -37,12 +54,24 @@ def compute_score(reward_inputs: List[Dict[str, Any]], format_weight: float = 0.
     for reward_input in reward_inputs:
         response = re.sub(r"\s*(<|>|/)\s*", r"\1", reward_input["response"])  # handle qwen2.5vl-32b format
         format_score = format_reward(response)
-        accuracy_score = accuracy_reward(response, reward_input["ground_truth"])
+        sim_score = 0.0
+        try:
+            resList = get_answer(response)
+            ansList = get_answer(reward_input["ground_truth"])
+            shape_score = compute_shape(resList, ansList)
+            presence_score = compute_presence(resList, ansList)
+            if shape_score == 1.0:
+                sim_score = fast_similarity_2d(resList, ansList)
+        except:
+            shape_score = 0.0
+            presence_score = 0.0
         scores.append(
             {
-                "overall": (1 - format_weight) * accuracy_score + format_weight * format_score,
+                "overall": format_score * 0.1 + sim_score * 0.6 + shape_score * 0.2 + presence_score * 0.1,
                 "format": format_score,
-                "accuracy": accuracy_score,
+                "similarity": sim_score,
+                "shape": shape_score,
+                "presence": presence_score,
             }
         )
 
