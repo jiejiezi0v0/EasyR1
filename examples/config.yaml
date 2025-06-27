@@ -9,7 +9,7 @@ data:
   video_fps: 2.0
   max_prompt_length: 8192
   max_response_length: 8192
-  rollout_batch_size: 512  # equivalent to verl's data.train_batch_size
+  rollout_batch_size: 128  # equivalent to verl's data.train_batch_size
   mini_rollout_batch_size: null  # equivalent to verl's data.gen_batch_size
   val_batch_size: 1024
   format_prompt: ./examples/format_prompt/math.jinja
@@ -54,8 +54,8 @@ worker:
       enable_cpu_offload: false
       enable_rank0_init: true
     offload:
-      offload_params: true  # true: more CPU memory; false: more GPU memory
-      offload_optimizer: true  # true: more CPU memory; false: more GPU memory
+      offload_params: false  # true: more CPU memory; false: more GPU memory
+      offload_optimizer: false  # true: more CPU memory; false: more GPU memory
 
   rollout:
     n: 5
@@ -74,7 +74,7 @@ worker:
   ref:
     fsdp:
       enable_full_shard: true
-      enable_cpu_offload: true  # true: more CPU memory; false: more GPU memory
+      enable_cpu_offload: false  # true: more CPU memory; false: more GPU memory
       enable_rank0_init: true
     offload:
       offload_params: false
@@ -88,7 +88,7 @@ trainer:
   max_steps: null
   project_name: easy_r1
   experiment_name: qwen3_arc_grpo
-  logger: ["console", "wandb"]
+  logger: ["console"]
   nnodes: 1
   n_gpus_per_node: 1
   max_try_make_batch: 20  # -1 means no limit
@@ -96,8 +96,8 @@ trainer:
   val_before_train: true
   val_only: false
   val_generations_to_log: 3
-  save_freq: -1  # -1 to disable
-  save_limit: -1  # -1 to disable
+  save_freq: 100  # -1 to disable
+  save_limit: 1  # -1 to disable
   save_model_only: false
-  save_checkpoint_path: null
+  save_checkpoint_path: /root/autodl-tmp/ckpt
   load_checkpoint_path: null
